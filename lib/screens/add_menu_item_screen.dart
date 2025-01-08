@@ -5,7 +5,7 @@ import '../services/database_helper.dart';
 class AddMenuItemScreen extends StatefulWidget {
   final Function onItemAdded;
 
-  AddMenuItemScreen({required this.onItemAdded});
+  const AddMenuItemScreen({super.key, required this.onItemAdded});
 
   @override
   _AddMenuItemScreenState createState() => _AddMenuItemScreenState();
@@ -23,7 +23,7 @@ class _AddMenuItemScreenState extends State<AddMenuItemScreen> {
 
     if (name.isEmpty || code.isEmpty || price <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Invalid input. Please check the fields")),
+        const SnackBar(content: Text("Invalid input. Please check the fields")),
       );
       return;
     }
@@ -37,28 +37,28 @@ class _AddMenuItemScreenState extends State<AddMenuItemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Add Menu Item")),
+      appBar: AppBar(title: const Text("Add Menu Item")),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: _nameController,
-              decoration: InputDecoration(labelText: "Item Name"),
+              decoration: const InputDecoration(labelText: "Item Name"),
             ),
             TextField(
               controller: _codeController,
-              decoration: InputDecoration(labelText: "Item Code"),
+              decoration: const InputDecoration(labelText: "Item Code"),
             ),
             TextField(
               controller: _priceController,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: "Item Price"),
+              decoration: const InputDecoration(labelText: "Item Price"),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _addMenuItem,
-              child: Text("Add Item"),
+              child: const Text("Add Item"),
             ),
           ],
         ),

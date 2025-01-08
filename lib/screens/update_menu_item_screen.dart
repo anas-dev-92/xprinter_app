@@ -5,7 +5,7 @@ import '../services/database_helper.dart';
 class UpdateMenuItemScreen extends StatefulWidget {
   final MenuItem item;
 
-  UpdateMenuItemScreen({required this.item});
+  const UpdateMenuItemScreen({super.key, required this.item});
 
   @override
   _UpdateMenuItemScreenState createState() => _UpdateMenuItemScreenState();
@@ -59,7 +59,7 @@ class _UpdateMenuItemScreenState extends State<UpdateMenuItemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Update Menu Item"),
+        title: const Text("Update Menu Item"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -69,7 +69,7 @@ class _UpdateMenuItemScreenState extends State<UpdateMenuItemScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: "Item Name"),
+                decoration: const InputDecoration(labelText: "Item Name"),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return "Please enter the item name";
@@ -79,7 +79,7 @@ class _UpdateMenuItemScreenState extends State<UpdateMenuItemScreen> {
               ),
               TextFormField(
                 controller: _codeController,
-                decoration: InputDecoration(labelText: "Item Code"),
+                decoration: const InputDecoration(labelText: "Item Code"),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return "Please enter the item code";
@@ -89,7 +89,7 @@ class _UpdateMenuItemScreenState extends State<UpdateMenuItemScreen> {
               ),
               TextFormField(
                 controller: _priceController,
-                decoration: InputDecoration(labelText: "Item Price"),
+                decoration: const InputDecoration(labelText: "Item Price"),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -101,10 +101,10 @@ class _UpdateMenuItemScreenState extends State<UpdateMenuItemScreen> {
                   return null;
                 },
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _updateItem,
-                child: Text("Update Item"),
+                child: const Text("Update Item"),
               ),
             ],
           ),

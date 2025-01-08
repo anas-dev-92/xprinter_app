@@ -6,6 +6,8 @@ import 'add_menu_item_screen.dart';
 import 'update_menu_item_screen.dart'; // Import the new screen
 
 class MenuListScreen extends StatefulWidget {
+  const MenuListScreen({super.key});
+
   @override
   _MenuListScreenState createState() => _MenuListScreenState();
 }
@@ -19,11 +21,19 @@ class _MenuListScreenState extends State<MenuListScreen> {
     _refreshMenu(); // Initialize the menu items list.
   }
 
-  // Function to refresh the menu items
-  void _refreshMenu() {
-    setState(() {
-      _menuItems = DatabaseHelper().fetchMenuItems();
-    });
+  // Function to refresh the menu items and reset quantities
+  void _refreshMenu() async {
+    try {
+      // Reset quantities to 0
+      await DatabaseHelper().resetQuantities();
+
+      // Fetch the updated menu items
+      setState(() {
+        _menuItems = DatabaseHelper().fetchMenuItems();
+      });
+    } catch (e) {
+      print("Error refreshing menu: $e");
+    }
   }
 
   void navigateToBillScreen() async {
@@ -76,13 +86,13 @@ class _MenuListScreenState extends State<MenuListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center( // Center the title in the AppBar
+        title: const Center( // Center the title in the AppBar
           child: Text("Restaurant Menu"),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.update),
-            onPressed: _refreshMenu, // Refresh the menu items
+            icon: const Icon(Icons.update),
+            onPressed: _refreshMenu, // Refresh the menu items and reset quantities
           ),
         ],
       ),
@@ -90,12 +100,12 @@ class _MenuListScreenState extends State<MenuListScreen> {
         future: _menuItems,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
             print("Error fetching menu items: ${snapshot.error}");
-            return Center(child: Text("Error loading menu items"));
+            return const Center(child: Text("Error loading menu items"));
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -108,8 +118,8 @@ class _MenuListScreenState extends State<MenuListScreen> {
                   width: 100, // Adjust the width as needed
                   height: 100, // Adjust the height as needed
                 ),
-                SizedBox(height: 20), // Add some spacing
-                Text(
+                const SizedBox(height: 20), // Add some spacing
+                const Text(
                   "Restaurant",
                   style: TextStyle(
                     fontSize: 24,
@@ -133,7 +143,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.remove),
+                        icon: const Icon(Icons.remove),
                         onPressed: () {
                           setState(() {
                             if (item.quantity > 0) item.quantity--;
@@ -143,7 +153,7 @@ class _MenuListScreenState extends State<MenuListScreen> {
                       ),
                       Text(item.quantity.toString()),
                       IconButton(
-                        icon: Icon(Icons.add),
+                        icon: const Icon(Icons.add),
                         onPressed: () {
                           setState(() {
                             item.quantity++;
@@ -164,12 +174,12 @@ class _MenuListScreenState extends State<MenuListScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: navigateToBillScreen,
-        child: Icon(Icons.shopping_cart),
+        child: const Icon(Icons.shopping_cart),
       ),
       persistentFooterButtons: [
         ElevatedButton(
           onPressed: navigateToAddMenuItemScreen,
-          child: Text("Add Menu Item"),
+          child: const Text("Add Menu Item"),
         ),
       ],
     );

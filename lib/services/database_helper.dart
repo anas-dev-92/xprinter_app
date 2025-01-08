@@ -1,6 +1,5 @@
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import '../models/menu_item.dart';
 
 class DatabaseHelper {
@@ -46,7 +45,15 @@ class DatabaseHelper {
 
     await menuBox.delete(menuItem.id);
   }
+Future<void> resetQuantities() async {
+  final menuBox = await openMenuBox();
+  final menuItems = menuBox.values.toList();
 
+  for (var item in menuItems) {
+    item.quantity = 0; // Reset quantity to 0
+    await menuBox.put(item.id, item); // Update the item in the database
+  }
+}
   // Fetch all menu items from the box
   Future<List<MenuItem>> fetchMenuItems() async {
     final menuBox = await openMenuBox();
