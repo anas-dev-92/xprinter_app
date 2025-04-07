@@ -1,0 +1,2 @@
+C:/Users/AnasB/Desktop/ubuntu PC/appmobile/xprinter_app/android/app/.cxx/RelWithDebInfo/2d6x6r4y/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/AnasB/Desktop/ubuntu PC/appmobile/xprinter_app/android/app/.cxx/RelWithDebInfo/2d6x6r4y/armeabi-v7a/CMakeFiles/rebuild_cache.dir

@@ -1,18 +1,50 @@
 import 'package:flutter/material.dart';
-import 'screens/menu_list_screen.dart'; // Import MenuListScreen
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+import 'models/menu_item.dart';
+import 'screens/menu_list_screen.dart';
 import 'services/database_helper.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter binding is initialized
+  WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    print("Initializing Hive...");
-    await DatabaseHelper().initialize(); // Initialize Hive
-    print("Hive initialized successfully.");
+    // Initialize Hive with path
+    final appDocumentDir = await getApplicationDocumentsDirectory();
+    await Hive.initFlutter(appDocumentDir.path);
 
-    runApp(MyApp());
+    // Register adapters
+    Hive.registerAdapter(MenuItemAdapter());
+
+    // Initialize database
+    print("Initializing database...");
+    await DatabaseHelper().initialize();
+
+    runApp(const MyApp());
   } catch (e) {
-    print("Error during initialization: $e");
+    print("Failed to initialize app: $e");
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 20),
+                const Text("Failed to initialize app"),
+                Text(e.toString()),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => main(),
+                  child: const Text("Retry"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -22,12 +54,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false, // Disable the debug banner
       title: 'Restaurant App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MenuListScreen(), // Use MenuListScreen from its own file
+      home: const MenuListScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }

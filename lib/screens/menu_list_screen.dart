@@ -3,7 +3,7 @@ import '../models/menu_item.dart';
 import '../services/database_helper.dart';
 import 'create_bill_screen.dart';
 import 'add_menu_item_screen.dart';
-import 'update_menu_item_screen.dart'; // Import the new screen
+import 'update_menu_item_screen.dart';
 
 class MenuListScreen extends StatefulWidget {
   const MenuListScreen({super.key});
@@ -13,72 +13,98 @@ class MenuListScreen extends StatefulWidget {
 }
 
 class _MenuListScreenState extends State<MenuListScreen> {
-  late Future<List<MenuItem>> _menuItems;
+  late final DatabaseHelper _dbHelper;
+  late Future<List<MenuItem>> _menuItemsFuture;
+  List<MenuItem> _menuItems = [];
 
   @override
   void initState() {
     super.initState();
-    _refreshMenu(); // Initialize the menu items list.
+    _dbHelper = DatabaseHelper();
+    _menuItemsFuture = Future.value([]);
+    _initializeData();
   }
 
-  // Function to refresh the menu items and reset quantities
-  void _refreshMenu() async {
+  Future<void> _initializeData() async {
     try {
-      // Reset quantities to 0
-      await DatabaseHelper().resetQuantities();
+      print("Initializing database...");
+      await _dbHelper.initialize();
+      print("Database initialized, refreshing menu...");
+      await _refreshMenu();
+      print("Menu refreshed, current item count: ${_menuItems.length}");
+    } catch (e) {
+      print("Initialization error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to initialize: ${e.toString()}")),
+        );
+      }
+    }
+  }
 
-      // Fetch the updated menu items
+  Future<void> _refreshMenu() async {
+    try {
+      final items = await _dbHelper.fetchMenuItems();
       setState(() {
-        _menuItems = DatabaseHelper().fetchMenuItems();
+        _menuItems = items;
+        _menuItemsFuture = Future.value(items);
       });
     } catch (e) {
-      print("Error refreshing menu: $e");
+      print("Error loading menu: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error loading menu: ${e.toString()}")),
+        );
+      }
     }
   }
 
-  void navigateToBillScreen() async {
-    try {
-      List<MenuItem> selectedItems = await DatabaseHelper().fetchMenuItems();
-      selectedItems = selectedItems.where((item) => item.quantity > 0).toList();
-      double totalAmount = selectedItems.fold(0.0, (sum, item) => sum + item.total);
+  void _navigateToBillScreen() {
+    final selectedItems = _menuItems.where((item) => item.quantity > 0).toList();
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CreateBillScreen(
-            items: selectedItems,
-            totalAmount: totalAmount,
-          ),
-        ),
+    if (selectedItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select at least one item")),
       );
-    } catch (e) {
-      print("Error navigating to bill screen: $e");
+      return;
     }
-  }
 
-  void navigateToAddMenuItemScreen() {
+    final totalAmount = selectedItems.fold(0.0, (sum, item) => sum + item.total);
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddMenuItemScreen(
-          onItemAdded: _refreshMenu, // Pass the callback to refresh the menu
+        builder: (context) => CreateBillScreen(
+          items: selectedItems,
+          totalAmount: totalAmount,
         ),
       ),
     );
   }
 
-  // Function to navigate to the update screen
-  void _navigateToUpdateScreen(MenuItem item) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UpdateMenuItemScreen(item: item),
-      ),
-    );
+  void _updateItemQuantity(MenuItem item, int delta) {
+    setState(() {
+      item.quantity += delta;
+      if (item.quantity < 0) item.quantity = 0;
+      _dbHelper.updateMenuItem(item);
+    });
+  }
 
-    // Refresh the menu items if the item was updated
-    if (result == true) {
+  Future<void> _deleteMenuItem(MenuItem item) async {
+    try {
+      await _dbHelper.deleteMenuItem(item);
       _refreshMenu();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("${item.name} deleted")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete: ${e.toString()}")),
+        );
+      }
     }
   }
 
@@ -86,100 +112,170 @@ class _MenuListScreenState extends State<MenuListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Center( // Center the title in the AppBar
-          child: Text("Restaurant Menu"),
-        ),
+        title: const Text("Restaurant Menu"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.update),
-            onPressed: _refreshMenu, // Refresh the menu items and reset quantities
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshMenu,
+            tooltip: 'Refresh Menu',
           ),
         ],
       ),
       body: FutureBuilder<List<MenuItem>>(
-        future: _menuItems,
+        future: _menuItemsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            print("Error fetching menu items: ${snapshot.error}");
-            return const Center(child: Text("Error loading menu items"));
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Add the logo above the "Restaurant" text
-                Image.asset(
-                  'assets/images/logo.jpeg', // Replace with your logo path
-                  width: 100, // Adjust the width as needed
-                  height: 100, // Adjust the height as needed
-                ),
-                const SizedBox(height: 20), // Add some spacing
-                const Text(
-                  "Restaurant",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error loading menu",
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-              ],
+                  TextButton(
+                    onPressed: _refreshMenu,
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
             );
           }
 
-          final menuItems = snapshot.data!;
-          return ListView.builder(
-            itemCount: menuItems.length,
-            itemBuilder: (context, index) {
-              final item = menuItems[index];
-              return Card(
-                child: ListTile(
-                  title: Text(item.name),
-                  subtitle: Text("Code: ${item.code} | Price: ${item.price.toStringAsFixed(0)} kip"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove),
-                        onPressed: () {
-                          setState(() {
-                            if (item.quantity > 0) item.quantity--;
-                            DatabaseHelper().updateMenuItem(item);
-                          });
-                        },
-                      ),
-                      Text(item.quantity.toString()),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: () {
-                          setState(() {
-                            item.quantity++;
-                            DatabaseHelper().updateMenuItem(item);
-                          });
-                        },
-                      ),
-                    ],
+          if (snapshot.data == null || snapshot.data!.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/logo.jpeg',
+                    width: 100,
+                    height: 100,
                   ),
-                  onTap: () {
-                    _navigateToUpdateScreen(item); // Navigate to the update screen
-                  },
+                  const SizedBox(height: 20),
+                  const Text(
+                    "No Menu Items Found",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddMenuItemScreen(
+                          onItemAdded: _refreshMenu,
+                        ),
+                      ),
+                    ),
+                    child: const Text("Add Your First Item"),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.length,
+            itemBuilder: (context, index) {
+              final item = snapshot.data![index];
+              return Dismissible(
+                key: Key(item.code),
+                background: Container(color: Colors.red),
+                confirmDismiss: (direction) async {
+                  return await showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Confirm Delete"),
+                      content: Text("Delete ${item.name}?"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text("Delete"),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                onDismissed: (direction) => _deleteMenuItem(item),
+                child: Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: ListTile(
+                    title: Text(
+                      item.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Code: ${item.code}"),
+                        Text("Price: ${item.price.toStringAsFixed(0)} kip"),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          color: Colors.red,
+                          onPressed: () => _updateItemQuantity(item, -1),
+                        ),
+                        Text(
+                          item.quantity.toString(),
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          color: Colors.green,
+                          onPressed: () => _updateItemQuantity(item, 1),
+                        ),
+                      ],
+                    ),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UpdateMenuItemScreen(
+                          item: item,
+                          onItemUpdated: _refreshMenu,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: navigateToBillScreen,
-        child: const Icon(Icons.shopping_cart),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToBillScreen,
+        icon: const Icon(Icons.receipt),
+        label: const Text("Create Bill"),
+        backgroundColor: Colors.green,
       ),
       persistentFooterButtons: [
-        ElevatedButton(
-          onPressed: navigateToAddMenuItemScreen,
-          child: const Text("Add Menu Item"),
+        ElevatedButton.icon(
+          onPressed: () async {
+            await _dbHelper.clearDatabase();
+            await _dbHelper.initialize();
+            _refreshMenu();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Database completely reset")),
+              );
+            }
+          },
+          icon: const Icon(Icons.delete_forever),
+          label: const Text("Full Reset"),
         ),
       ],
     );

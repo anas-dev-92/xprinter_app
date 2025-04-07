@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import '/models/menu_item.dart';
-import '/services/printer_service.dart'; // Import the PrinterService
-import '/services/database_helper.dart'; // Import the DatabaseHelper
+import '/services/printer_service.dart';
+import '/services/database_helper.dart';
 
 class CreateBillScreen extends StatefulWidget {
   final List<MenuItem> items;
   final double totalAmount;
 
-  const CreateBillScreen({super.key, 
+  const CreateBillScreen({
+    super.key,
     required this.items,
     required this.totalAmount,
   });
@@ -17,47 +18,51 @@ class CreateBillScreen extends StatefulWidget {
 }
 
 class _CreateBillScreenState extends State<CreateBillScreen> {
-  final PrinterService _printerService = PrinterService('192.168.0.100', 9100); // Replace with your printer's IP and port
-  final DatabaseHelper _databaseHelper = DatabaseHelper(); // Database helper instance
+  final PrinterService _printerService = PrinterService('192.168.100.78', 9100);
+  final DatabaseHelper _databaseHelper = DatabaseHelper();
 
-  // Method to format the bill as a string
   String formatBill() {
-  String billContent = "------------------------\n";
-  billContent += "       BABA Restaurant\n"; // Restaurant name
-  billContent += "------------------------\n";
-  billContent += "Receipt\n";
-  billContent += "------------------------\n";
-  double totalAmount = 0.0;
+    String billContent = "------------------------\n";
+    billContent += "    BABA Biryani House\n";
+    billContent += "------------------------\n";
+    billContent += "Receipt\n";
+    billContent += "------------------------\n";
 
-  for (var item in widget.items) {
-    double itemTotal = item.price * item.quantity; // Calculate item total based on quantity
-    totalAmount += itemTotal;
-    // Format: "(code: 65) Biryani x1 75000 kip"
-    billContent += "(code: ${item.code}) ${item.name} x${item.quantity} ${itemTotal.toStringAsFixed(0)} kip\n";
+    // Print items normally
+    for (var item in widget.items) {
+      double itemTotal = item.price * item.quantity;
+      billContent += "(code: ${item.code}) ${item.name} x${item.quantity} ${itemTotal.toStringAsFixed(0)} kip\n";
+    }
+
+    billContent += "------------------------\n";
+
+    // Apply bold and double-height for the total
+    billContent += "\x1B\x21\x30"; // ESC ! 0x30 (Bold + Double Height)
+    billContent += "Total: ${widget.totalAmount.toStringAsFixed(0)} kip\n";
+    billContent += "\x1B\x21\x00"; // ESC ! 0x00 (Reset to normal text)
+
+    billContent += "------------------------\n";
+    billContent += "Thank you for your purchase!\n";
+
+    // Add minimal paper feed before cutting
+    billContent += "\x1B\x64\x02"; // Feed 2 lines (ESC d 2)
+
+    // Send cutter command (if supported)
+    billContent += "\x1D\x56\x41\x03"; // Full cut (ESC/POS GS V 41)
+
+    return billContent;
   }
 
-  billContent += "------------------------\n";
-  billContent += "Total: ${totalAmount.toStringAsFixed(0)} kip\n"; // Remove .00
-  billContent += "Thank you for your purchase!\n";
-
-  // Add phone number at the bottom
-  billContent += "Contact us: +8562052449500\n";
-
-  // Add more blank lines at the bottom
-  billContent += "\n\n\n\n\n"; // Add 5 blank lines (adjust as needed)
-
-  return billContent;
-}
-
-  // Method to print the bill
   Future<void> printBill() async {
   try {
-    // Connect to the printer
     await _printerService.connect();
 
-    // Print the bill content
+    // Print the bill text
     String bill = formatBill();
     await _printerService.printText(bill);
+
+    // Comment out the image printing for now
+    // await _printerService.printImage('assets/images/qrcode.jpeg');
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +76,6 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
       );
     }
   } finally {
-    // Disconnect from the printer
     try {
       await _printerService.disconnect();
     } catch (e) {
@@ -94,7 +98,7 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
                 return ListTile(
                   title: Text(item.name),
                   subtitle: Text("Quantity: ${item.quantity}"),
-                  trailing: Text("${(item.price * item.quantity).toStringAsFixed(0)} kip"), // Remove .00
+                  trailing: Text("${(item.price * item.quantity).toStringAsFixed(0)} kip"),
                 );
               },
             ),
@@ -102,12 +106,24 @@ class _CreateBillScreenState extends State<CreateBillScreen> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Text(
-              "Total: ${widget.totalAmount.toStringAsFixed(0)} kip", // Remove .00
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              "Total: ${widget.totalAmount.toStringAsFixed(0)} kip",
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Image.asset(
+              'assets/images/qrcode.jpeg',
+              width: 200,
+              height: 200,
             ),
           ),
           ElevatedButton(
-            onPressed: printBill, // Call the printBill method
+            onPressed: printBill,
             child: const Text("Print Bill"),
           ),
         ],
